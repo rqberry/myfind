@@ -2,7 +2,7 @@
 #include <iostream>
 #include <filesystem>
 
-using fs = std::filesystem;
+namespace fs = std::filesystem;
 
 fs::path START_PATH = fs::current_path();
 
@@ -12,7 +12,7 @@ void print_dir(fs::path directory) {
 }
 
 
-int main(int arc, char **argv) {
+int main(int argc, char **argv) {
   fs::current_path(fs::temp_directory_path());
   fs::create_directories("sandbox/a/b");
   std::ofstream("sandbox/file1.txt");

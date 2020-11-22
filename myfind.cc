@@ -20,15 +20,16 @@ int main(int argc, char **argv) {
 
   //for -name
   auto name_iter = std::find(arg_list.begin(),arg_list.end(),"-name");
-  std::string name_token = (name_iter != arg_list.end()) ? arg_list[name_iter+1] : "";
+  std::string name_token = (name_iter != arg_list.end()) ? arg_list[std::distance(arg_list.begin(),name_iter)+1] : "";
   if (name_token.substr(0,1) == "/") {
       std::cout << "find: warning: ‘-name’ matches against basenames only, but the given pattern contains a directory separator (‘/’), thus the expression will evaluate to false all the time. Did you mean ‘-wholename’?" << std::endl;
       return 1;
   }
 
   //for -mtime
+  //actually we don't need this since it is always 0?
   auto mtime_iter = std::find(arg_list.begin(),arg_list.end(),"-mtime");
-  int mtime_token = (mtime_iter != arg_list.end()) ? arg_list[mtime_iter+1]+1 : -1;
+  int mtime_token = (mtime_iter != arg_list.end()) ? std::stoi(arg_list[std::distance(arg_list.begin(),mtime_iter)+1]) +1 : -1;
 
 
   //for -type

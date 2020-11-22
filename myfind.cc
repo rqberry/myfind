@@ -42,15 +42,17 @@ int main(int argc, char **argv) {
     fs::directory_options::follow_directory_symlink : fs::directory_options::none;
 
   //printing out the initial directory because recursive_directory_iterator always skips it
-  std::cout<<".\n";
-
+  if (name_token == "") {
+      std::cout<<".\n";
+  }
   //recursive_directory_iterator iterates through all folders
   for (auto& p : fs::recursive_directory_iterator(".",L_token))
   {
       auto s = (std::string) p.path();
       std::string p_s = s.substr(1,s.length()-1);
       if (name_token != "") {
-	if (p_s.compare(name_token) == 0) std::cout << "." << p_s << '\n';
+	//std::cout << p_s << " : " << name_token << std::endl;
+	if (p_s.compare("/" + name_token) == 0) std::cout << "." << p_s << '\n';
       } else {
 	std::cout << "." << p_s << '\n';
       }

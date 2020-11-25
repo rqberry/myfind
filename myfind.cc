@@ -5,17 +5,17 @@
 #include <algorithm>    //for std::find
 #include <string>       //for compare()
 #include <chrono>       //for -mtime (for chrono stuff)
-#include <ctime>        // for asctime and std::localtime
-
+#include <ctime>        //for asctime and std::localtime
+#include <time.h>       //for tm struct and time_t
+#include <sys/stat.h>   //for stat()
+#include <sys/types.h>  //for stat()
+#include <dirent.h>     //for DIR
 
 namespace fs = std::filesystem;
 
 fs::path START_PATH = fs::current_path();
 
-
 int main(int argc, char **argv) {
-
-
 
   std::vector<std::string> arg_list;
   for (int i = 1; i < argc; i++) arg_list.push_back((std::string)argv[i]);
@@ -35,11 +35,9 @@ int main(int argc, char **argv) {
   //actually we don't need this since it is always 0?
   auto mtime_iter = std::find(arg_list.begin(),arg_list.end(),"-mtime");
   //TODO: print error for no -mtime specification "find: missing argument to `-mtime'"
-  int mtime_token = (mtime_iter != arg_list.end()) ? std::stoi(arg_list[std::distance(arg_list.begin(),mtime_iter)+1]) +1 : -1;
-
-  //calculate what boundary is for the times we're looking for
-  //now is std::localtime(&now)
-
+  int mtime_token = (mtime_iter != arg_list.end()) ? std::stoi(arg_list[std::distance(arg_list.begin(),mtime_iter)+1]) : -1;
+  //time_t l_bound = std::localtime(&now) - (mtime_token+1)*86400; //mtime_token+1 day(s) ago (24 hours)
+  //time_t u_bound = std::localtime(&now) - mtime_token*86400; //mtime_token day(s) ago (24 hours)
 
   //for -type
   //TODO: WHAT IF THERE ARE MULTIPLE '-type's !?!?!?!?
@@ -55,9 +53,9 @@ int main(int argc, char **argv) {
   if (name_token == "") {
       std::cout<<".\n";
   }
-
-//  list[list.end()]
-
+  //list[list.end()]
+  struct dirent *entry = nullptr;
+  DIR *dp = nullptr;
   //recursive_directory_iterator iterates through all folders
   for (auto& p : fs::recursive_directory_iterator(".",L_token))
   {
@@ -66,20 +64,28 @@ int main(int argc, char **argv) {
 
       std::string name_token_comp = name_token;
       if (name_token == "") name_token_comp = *(--p.path().end());
-      int mtime_token_comp = mtime_token;
-      if (mtime_token == -1) mtime_token_comp = fs::last_write_time(p.path());
+
+      struct stat stat_buf;
+      stat(p_s.c_str(),&stat_buf);
+      time_t mtime = stat_buf.st_mtime;
+      std::cout << mtime << std::endl;
+      /*
+      std::chrono::time_point p_tp = fs::last_write_time(p.path());
+      time_t p_t = std::chrono::to_time_t(time_point_cast<system_clock::duration>(p_t
+        - std::chrono::clock::now()
+        + std::chrono::system_clock::now()));
+      */
+
+      //std::chrono::system_clock::duration hr = ();
+      //bound -= std::chrono::duration<int>(86400);
+      //if (mtime_token == -1) bound = fs::last_write_time(p.path());
 	       //std::cout << p_s << " : " << name_token << std::endl;
       if (
-        (*(--p.path().end())).compare(name_token_comp) == 0 &&
-        fs::last_write_time(p.path()) == mtime_token_comp //&&
+        (*(--p.path().end())).compare(name_token_comp) == 0 //&&
+        //(f_time >= bound) >= 0) //&&
         /* type qualification */
-        ) std::cout << "." << p_s << '\n';
+      ) /*std::cout << "." << p_s << '\n'*/;
 
-      /*
-      else {
-	       std::cout << "." << p_s << '\n';
-      }
-      */
   }
   return 0;
 }

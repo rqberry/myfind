@@ -10,7 +10,10 @@
 #include <sys/stat.h>   //for stat()
 #include <sys/types.h>  //for stat()
 #include <dirent.h>     //for DIR
+#include <iomanip>      //for something
+//#include <ratio>        //for time point
 
+using namespace std::chrono_literals; //for the time code we copied in
 namespace fs = std::filesystem;
 
 fs::path START_PATH = fs::current_path();
@@ -54,8 +57,6 @@ int main(int argc, char **argv) {
       std::cout<<".\n";
   }
   //list[list.end()]
-  struct dirent *entry = nullptr;
-  DIR *dp = nullptr;
   //recursive_directory_iterator iterates through all folders
   for (auto& p : fs::recursive_directory_iterator(".",L_token))
   {
@@ -65,16 +66,8 @@ int main(int argc, char **argv) {
       std::string name_token_comp = name_token;
       if (name_token == "") name_token_comp = *(--p.path().end());
 
-      struct stat stat_buf;
-      stat(p_s.c_str(),&stat_buf);
-      time_t mtime = stat_buf.st_mtime;
-      std::cout << mtime << std::endl;
-      /*
-      std::chrono::time_point p_tp = fs::last_write_time(p.path());
-      time_t p_t = std::chrono::to_time_t(time_point_cast<system_clock::duration>(p_t
-        - std::chrono::clock::now()
-        + std::chrono::system_clock::now()));
-      */
+      // THIS IS MTIME WE NEED
+      //std::chrono::time_point p_tp = fs::last_write_time(p.path());
 
       //std::chrono::system_clock::duration hr = ();
       //bound -= std::chrono::duration<int>(86400);
@@ -82,9 +75,11 @@ int main(int argc, char **argv) {
 	       //std::cout << p_s << " : " << name_token << std::endl;
       if (
         (*(--p.path().end())).compare(name_token_comp) == 0 //&&
-        //(f_time >= bound) >= 0) //&&
+        //(p_tp > std::chrono::file_clock::from_sys(std::chrono::system_clock::now()) - std::chrono::hours(24)) //&&
+
+
         /* type qualification */
-      ) /*std::cout << "." << p_s << '\n'*/;
+      ) std::cout << "." << p_s << '\n';
 
   }
   return 0;

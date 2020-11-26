@@ -1,4 +1,4 @@
-CXX       = g++-9
+CXX       = g++-8
 CXX_STD   = -std=c++2a -lstdc++fs
 CXX_W     = -Wall -Wextra -Wpedantic -g
 CXX_GDB   = -ggdb3 -O0

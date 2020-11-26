@@ -5,40 +5,72 @@
 #include <algorithm>    //for std::find
 #include <string>       //for compare()
 #include <chrono>       //for -mtime (for chrono stuff)
-#include <ctime>        //for asctime and std::localtime
 #include <time.h>       //for tm struct and time_t
-#include <sys/stat.h>   //for stat()
-#include <sys/types.h>  //for stat()
 #include <dirent.h>     //for DIR
 #include <iomanip>      //for something
-//#include <ratio>        //for time point
+#include <cstring>      //for strcpy()
+#include <unistd.h>     //for execv()
 
-using namespace std::chrono_literals; //for the time code we copied in
 namespace fs = std::filesystem;
 
-fs::path START_PATH = fs::current_path();
+/*
+int execute(const char *pathname, std::vector<std::string> arg_list) {
+  auto exec_iter = std::find(arg_list.begin(),arg_list.end(),"-exec");
+  if (exec_iter != arg_list.end())
+  {
+    // creating argv on the stack
+    size_t size_arglist = arg_list.size();
+    char* argv[size_arglist];
+
+    int i = 0;
+    exec_iter++;
+    char *arg;
+    //TODO: print "find: missing argument to `-exec'" for no \; || ';'
+
+    while (exec_iter < arg_list.end() &&
+          (arg_list[std::distance(arg_list.begin(),exec_iter)].compare("\\;") != 0 ||
+          arg_list[std::distance(arg_list.begin(),exec_iter)].compare("';'") != 0))
+    {
+      strcpy(arg, arg_list[std::distance(arg_list.begin(),exec_iter)].c_str());
+      argv[i] = arg;
+      i++;
+    }
+
+    argv[i] = nullptr;
+    execv(pathname, const_cast<char**>(argv));
+    //TODO: also remember to assert if the exec returns not 0;
+    //TODO: execv errors must be find: errors (we can just append find: to begin of the execv error)
+  }
+}
+*/
 
 int main(int argc, char **argv) {
 
   std::vector<std::string> arg_list;
   for (int i = 1; i < argc; i++) arg_list.push_back((std::string)argv[i]);
 
-
   //for -name
   auto name_iter = std::find(arg_list.begin(),arg_list.end(),"-name");
   //TODO: print to error for no -name specification "find: missing argument to `-name'"
   std::string name_token = (name_iter != arg_list.end()) ? arg_list[std::distance(arg_list.begin(),name_iter)+1] : "";
-  //TODO: print to error
-  if (name_token.substr(0,1) == "/") {
+  //TODO: print to error & exit gracefully
+  if (name_token != "" && name_token.substr(0,1) == "/") {
       std::cout << "find: warning: ‘-name’ matches against basenames only, but the given pattern contains a directory separator (‘/’), thus the expression will evaluate to false all the time.  Did you mean ‘-wholename’?" << std::endl;
       return 1;
   }
 
   //for -mtime
-  //actually we don't need this since it is always 0?
   auto mtime_iter = std::find(arg_list.begin(),arg_list.end(),"-mtime");
-  //TODO: print error for no -mtime specification "find: missing argument to `-mtime'"
-  int mtime_token = (mtime_iter != arg_list.end()) ? std::stoi(arg_list[std::distance(arg_list.begin(),mtime_iter)+1]) : -1;
+  //TODO: print to error & exit gracefully
+  if (++mtime_iter == arg_list.end())
+  {
+    std::cout << "find: missing argument to `-mtime'" << std::endl;
+  }
+  else if (arg_list[std::distance(arg_list.begin(),mtime_iter)+1].compare("0") != 0)
+  {
+    std::cout << "find: invalid argument `" << arg_list[std::distance(arg_list.begin(),mtime_iter)+1] << "' to `-mtime'" << std::endl;
+  }
+  bool mtime_token = (mtime_iter != arg_list.end()) ? true : false;
 
   //for -type
   //TODO: WHAT IF THERE ARE MULTIPLE '-type's !?!?!?!?
@@ -52,33 +84,33 @@ int main(int argc, char **argv) {
   //printing out the initial directory because recursive_directory_iterator always skips it
   //TODO: this is a hack
   if (name_token == "") {
-      std::cout<<".\n";
+      std::cout << "." << std::endl;
   }
-  //list[list.end()]
+
   //recursive_directory_iterator iterates through all folders
   for (auto& p : fs::recursive_directory_iterator(".",L_token))
   {
-      auto s = (std::string) p.path();
-      std::string p_s = s.substr(1,s.length()-1);
+    /*
+    //testing to see if file_clock works
+    //std::cout <<"the current time from file clock is "<<std::chrono::file_clock::now()<<std::endl();
+    auto s = (std::string) p.path();
 
-      std::string name_token_comp = name_token;
-      if (name_token == "") name_token_comp = *(--p.path().end());
+    std::string p_s = s.substr(1,s.length()-1);
 
-      // THIS IS MTIME WE NEED
-      //std::chrono::time_point p_tp = fs::last_write_time(p.path());
+    std::string name_token_comp = name_token;
+    if (name_token == "") name_token_comp = *(--p.path().end());
 
-      //std::chrono::system_clock::duration hr = ();
-      //bound -= std::chrono::duration<int>(86400);
-      //if (mtime_token == -1) bound = fs::last_write_time(p.path());
-	       //std::cout << p_s << " : " << name_token << std::endl;
-      if (
-        (*(--p.path().end())).compare(name_token_comp) == 0 //&&
-        //(p_tp > std::chrono::file_clock::from_sys(std::chrono::system_clock::now()) - std::chrono::hours(24)) //&&
+    //std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    //std::time_t mtime_token_comp = now;
+    //if (mtime_token) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p.path()));
 
-
-        /* type qualification */
+    if (
+      (*(--p.path().end())).compare(name_token_comp) == 0 //&&
+      // mtime_token_comp >= now - 86400 &&
+      // type qualification
       ) std::cout << "." << p_s << '\n';
-
+    */
   }
+  std::cout << "return 0" <<std::endl;
   return 0;
 }

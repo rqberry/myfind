@@ -39,8 +39,6 @@ int main(int argc, char **argv) {
   auto mtime_iter = std::find(arg_list.begin(),arg_list.end(),"-mtime");
   //TODO: print error for no -mtime specification "find: missing argument to `-mtime'"
   int mtime_token = (mtime_iter != arg_list.end()) ? std::stoi(arg_list[std::distance(arg_list.begin(),mtime_iter)+1]) : -1;
-  //time_t l_bound = std::localtime(&now) - (mtime_token+1)*86400; //mtime_token+1 day(s) ago (24 hours)
-  //time_t u_bound = std::localtime(&now) - mtime_token*86400; //mtime_token day(s) ago (24 hours)
 
   //for -type
   //TODO: WHAT IF THERE ARE MULTIPLE '-type's !?!?!?!?

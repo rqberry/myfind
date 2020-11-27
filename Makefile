@@ -7,6 +7,7 @@ CXX_SAN   = -fsanitize=address,leak,undefined
 CXX_NODB  = $(CXX_STD) $(CXX_W)
 CXX_DB    = $(CXX_NODB) -DDEBUG
 CXX_SAN   = $(CXX_DB)  $(CXX_DB)
+END 			= -lstdc++fs
 
 .cc.o:
 	$(CXX) $(CXX_NODB) -c -O0 $<

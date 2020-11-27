@@ -106,6 +106,8 @@ int main(int argc, char **argv) {
   }
 
   //TODO: print to error & exit gracefully
+  //TODO: find: warning: ‘-name’ matches against basenames only, but the given pattern contains a directory separator (‘/’), thus the expression will evaluate to false all the time.  Did you mean ‘-wholename’?
+  //  for / at end or maybe anywhere?
   if (name_token != "" && name_token.substr(0,1) == "/") {
       std::cout << "find: warning: ‘-name’ matches against basenames only, but the given pattern contains a directory separator (‘/’), thus the expression will evaluate to false all the time.  Did you mean ‘-wholename’?" << std::endl;
       return 1;
@@ -151,6 +153,7 @@ int main(int argc, char **argv) {
       std::cout << "." << std::endl;
   }
 
+  //TODO: only start at "." if startpath unspecified 
   for (auto& p : fs::recursive_directory_iterator(".",L_token))
   {
     //this is for print
@@ -170,7 +173,7 @@ int main(int argc, char **argv) {
     //The Holy Mr. If Statment
     if (
       (*(--p.path().end())).compare(name_token_comp) == 0 &&
-      mtime_token_comp >= now - 86400 // &&
+      mtime_token_comp >= (now - 86400) // &&
       // type qualification
     ) std::cout << "." << dir_entry_printable << '\n';
   }

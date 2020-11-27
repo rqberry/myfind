@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
   }
 
 
-  /*
+
   bool mtime_token = false;
   //for -mtime
   auto mtime_iter = std::find(arg_list.begin(),arg_list.end(),"-mtime");
@@ -124,7 +124,8 @@ int main(int argc, char **argv) {
       std::cout << "find: missing argument to `-mtime'" << std::endl;
       return 1;
     }
-    mtime_iter--;
+    --mtime_iter;
+    // not working?
     if (arg_list[std::distance(arg_list.begin(),mtime_iter)].compare("0") != 0)
     {
       std::cout << "find: invalid argument `" << arg_list[std::distance(arg_list.begin(),mtime_iter)+1] << "' to `-mtime'" << std::endl;
@@ -132,7 +133,7 @@ int main(int argc, char **argv) {
     }
     mtime_token = (mtime_iter != arg_list.end()) ? true : false;
   }
-  */
+
 
   //for -type
   //TODO: WHAT IF THERE ARE MULTIPLE '-type's !?!?!?!? <- vector of types!!!!!
@@ -160,16 +161,16 @@ int main(int argc, char **argv) {
     if (name_token == "") name_token_comp = *(--p.path().end());
 
     //for -mtime
-    /*
+
     std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     std::time_t mtime_token_comp = now;
     if (mtime_token) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p.path()));
-    */
+
 
     //The Holy Mr. If Statment
     if (
-      (*(--p.path().end())).compare(name_token_comp) == 0 //&&
-      //mtime_token_comp >= now - 86400 // &&
+      (*(--p.path().end())).compare(name_token_comp) == 0 &&
+      mtime_token_comp >= now - 86400 // &&
       // type qualification
     ) std::cout << "." << dir_entry_printable << '\n';
   }

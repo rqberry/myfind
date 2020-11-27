@@ -44,9 +44,9 @@ int execute(const char *pathname, std::vector<std::string> arg_list) {
 }
 */
 
-
+/*
 void main_loop_r(fs::path top_p, fs::directory_options L_token, std::string name_token, bool mtime_token) {
-  /*
+
   (void) top_p;
   const std::string ass =  ".";
   fs::directory_iterator dir_iterator(ass,L_token);
@@ -75,9 +75,9 @@ void main_loop_r(fs::path top_p, fs::directory_options L_token, std::string name
     if (p.is_directory())
       main_loop_r(p, L_token, name_token, mtime_token);
     }
-    */
-}
 
+}
+*/
 
 int main(int argc, char **argv) {
 
@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
   }
 
 
-
+  /*
   bool mtime_token = false;
   //for -mtime
   auto mtime_iter = std::find(arg_list.begin(),arg_list.end(),"-mtime");
@@ -132,6 +132,7 @@ int main(int argc, char **argv) {
     }
     mtime_token = (mtime_iter != arg_list.end()) ? true : false;
   }
+  */
 
   //for -type
   //TODO: WHAT IF THERE ARE MULTIPLE '-type's !?!?!?!? <- vector of types!!!!!
@@ -149,7 +150,31 @@ int main(int argc, char **argv) {
       std::cout << "." << std::endl;
   }
 
-  main_loop_r(fs::current_path(),L_token,name_token,mtime_token);
+  for (auto& p : fs::recursive_directory_iterator(".",L_token))
+  {
+    //this is for print
+    std::string dir_entry_printable = ((std::string)p.path()).substr(1,((std::string)p.path()).length()-1);
+
+    //for -name
+    std::string name_token_comp = name_token;
+    if (name_token == "") name_token_comp = *(--p.path().end());
+
+    //for -mtime
+    /*
+    std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::time_t mtime_token_comp = now;
+    if (mtime_token) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p.path()));
+    */
+
+    //The Holy Mr. If Statment
+    if (
+      (*(--p.path().end())).compare(name_token_comp) == 0 //&&
+      //mtime_token_comp >= now - 86400 // &&
+      // type qualification
+    ) std::cout << "." << dir_entry_printable << '\n';
+  }
+
+  // main_loop_r(fs::current_path(),L_token,name_token,mtime_token);
 
   return 0;
 }

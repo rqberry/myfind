@@ -44,14 +44,50 @@ int execute(const char *pathname, std::vector<std::string> arg_list) {
 }
 */
 
+
+void main_loop_r(fs::directory_entry dir, fs::directory_options L_token, std::string name_token, bool mtime_token) {
+  fs::directory_iterator dir_iterator(dir.path(),L_token);
+  for(auto& p : dir_iterator)
+  {
+    //this is for print
+    std::string dir_entry_printable = ((std::string)p.path()).substr(1,((std::string)p.path()).length()-1);
+
+    //for -name
+    std::string name_token_comp = name_token;
+    if (name_token == "") name_token_comp = *(--p.path().end());
+
+    //for -mtime
+    std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::time_t mtime_token_comp = now;
+    if (mtime_token) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p.path()));
+
+    //the holy mr.if statment
+    if (
+      (*(--p.path().end())).compare(name_token_comp) == 0 &&
+      mtime_token_comp >= now - 86400 // &&
+      // type qualification
+    ) std::cout << "." << dir_entry_printable << '\n';
+
+    //if we need to recur
+    if (p.is_directory())
+      main_loop_r(p, L_token, name_token, mtime_token);
+    }
+}
+
+
 int main(int argc, char **argv) {
 
+  //turning argv into a vector of strings because #yolo
   std::vector<std::string> arg_list;
   for (int i = 1; i < argc; i++) arg_list.push_back((std::string)argv[i]);
 
-  //for -name
+  //for -name, we find name if it exists and then get the argument "name_token" for future usage
   auto name_iter = std::find(arg_list.begin(),arg_list.end(),"-name");
+
   //TODO: print to error for no -name specification "find: missing argument to `-name'"
+
+  //getting name token, this is pretty self explanatory. if the name iter points to the end, there is no name_token for us to get
+  // otherwise, we get whatever's after... idk if thi
   std::string name_token = (name_iter != arg_list.end()) ? arg_list[std::distance(arg_list.begin(),name_iter)+1] : "";
   //TODO: print to error & exit gracefully
   if (name_token != "" && name_token.substr(0,1) == "/") {
@@ -59,18 +95,25 @@ int main(int argc, char **argv) {
       return 1;
   }
 
+  bool mtime_token = false;
   //for -mtime
   auto mtime_iter = std::find(arg_list.begin(),arg_list.end(),"-mtime");
   //TODO: print to error & exit gracefully
-  if (++mtime_iter == arg_list.end())
+  if (mtime_iter != arg_list.end())
   {
-    std::cout << "find: missing argument to `-mtime'" << std::endl;
+    if (++mtime_iter == arg_list.end())
+    {
+      std::cout << "find: missing argument to `-mtime'" << std::endl;
+      return 1;
+    }
+    mtime_iter--;
+    if (arg_list[std::distance(arg_list.begin(),mtime_iter)].compare("0") != 0)
+    {
+      std::cout << "find: invalid argument `" << arg_list[std::distance(arg_list.begin(),mtime_iter)+1] << "' to `-mtime'" << std::endl;
+      return 1;
+    }
+    mtime_token = (mtime_iter != arg_list.end()) ? true : false;
   }
-  else if (arg_list[std::distance(arg_list.begin(),mtime_iter)+1].compare("0") != 0)
-  {
-    std::cout << "find: invalid argument `" << arg_list[std::distance(arg_list.begin(),mtime_iter)+1] << "' to `-mtime'" << std::endl;
-  }
-  bool mtime_token = (mtime_iter != arg_list.end()) ? true : false;
 
   //for -type
   //TODO: WHAT IF THERE ARE MULTIPLE '-type's !?!?!?!?
@@ -83,34 +126,11 @@ int main(int argc, char **argv) {
 
   //printing out the initial directory because recursive_directory_iterator always skips it
   //TODO: this is a hack
-  if (name_token == "") {
+  if (name_token == "" || name_token == ".") {
       std::cout << "." << std::endl;
   }
 
-  //recursive_directory_iterator iterates through all folders
-  for (auto& p : fs::recursive_directory_iterator(".",L_token))
-  {
-    /*
-    //testing to see if file_clock works
-    //std::cout <<"the current time from file clock is "<<std::chrono::file_clock::now()<<std::endl();
-    auto s = (std::string) p.path();
+  main_loop_r(fs::directory_entry("."),L_token,name_token,mtime_token);
 
-    std::string p_s = s.substr(1,s.length()-1);
-
-    std::string name_token_comp = name_token;
-    if (name_token == "") name_token_comp = *(--p.path().end());
-
-    //std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    //std::time_t mtime_token_comp = now;
-    //if (mtime_token) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p.path()));
-
-    if (
-      (*(--p.path().end())).compare(name_token_comp) == 0 //&&
-      // mtime_token_comp >= now - 86400 &&
-      // type qualification
-      ) std::cout << "." << p_s << '\n';
-    */
-  }
-  std::cout << "return 0" <<std::endl;
   return 0;
 }

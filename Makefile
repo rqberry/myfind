@@ -16,10 +16,10 @@ myfind: myfind.o
 	$(CXX) $(CXX_NODB) -o $@ $<
 
 valgrind: all
-	valgrind --leak-check=full --show-leak-kinds=all #./$(SRC) lotr.txt
+	valgrind --leak-check=full --show-leak-kinds=all #./$(SRC)
 
 helgrind: all
-	valgrind --tool=helgrind #./$(SRC) lotr.txt
+	valgrind --tool=helgrind #./$(SRC)
 
 %.o: %.cc %.hh
 	$(CXX) $(CXX_STD) $(CXX_NODB) -c -o $@ $<

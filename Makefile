@@ -1,5 +1,5 @@
 CXX       = g++-9
-CXX_STD   = -std=c++2a
+CXX_STD   = -std=c++2a -lstdc++fs
 CXX_W     = -Wall -Wextra -Wpedantic -g
 CXX_GDB   = -ggdb3 -O0
 CXX_SAN   = -fsanitize=address,leak,undefined

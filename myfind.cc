@@ -127,13 +127,13 @@ int main(int argc, char **argv) {
       return 1;
     }
     --mtime_iter;
-    // not working?
-    if (arg_list[std::distance(arg_list.begin(),mtime_iter)].compare("0") != 0)
+    // not working? ^^^
+    if (arg_list[std::distance(arg_list.begin(),mtime_iter)+1].compare("0") != 0)
     {
       std::cout << "find: invalid argument `" << arg_list[std::distance(arg_list.begin(),mtime_iter)+1] << "' to `-mtime'" << std::endl;
       return 1;
     }
-    mtime_token = (mtime_iter != arg_list.end()) ? true : false;
+    mtime_token = true;
   }
 
 
@@ -153,7 +153,10 @@ int main(int argc, char **argv) {
       std::cout << "." << std::endl;
   }
 
-  //TODO: only start at "." if startpath unspecified 
+  std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  bool once = true;
+
+  //TODO: only start at "." if startpath unspecified
   for (auto& p : fs::recursive_directory_iterator(".",L_token))
   {
     //this is for print
@@ -164,11 +167,15 @@ int main(int argc, char **argv) {
     if (name_token == "") name_token_comp = *(--p.path().end());
 
     //for -mtime
-
-    std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    //BUG: mtime_token_comp becomes some time in the future??
     std::time_t mtime_token_comp = now;
     if (mtime_token) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p.path()));
 
+    if (once) {
+      std::cout << mtime_token_comp << '\n';
+      std::cout << now - 86400 << '\n';
+      once = false;
+    }
 
     //The Holy Mr. If Statment
     if (

@@ -44,41 +44,6 @@ int execute(const char *pathname, std::vector<std::string> arg_list) {
 }
 */
 
-/*
-void main_loop_r(fs::path top_p, fs::directory_options L_token, std::string name_token, bool mtime_token) {
-
-  (void) top_p;
-  const std::string ass =  ".";
-  fs::directory_iterator dir_iterator(ass,L_token);
-  for(auto& p : dir_iterator)
-  {
-    //this is for print
-    std::string dir_entry_printable = ((std::string)p.path()).substr(1,((std::string)p.path()).length()-1);
-
-    //for -name
-    std::string name_token_comp = name_token;
-    if (name_token == "") name_token_comp = *(--p.path().end());
-
-    //for -mtime
-    std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    std::time_t mtime_token_comp = now;
-    if (mtime_token) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p.path()));
-
-    //The Holy Mr. If Statment
-    if (
-      (*(--p.path().end())).compare(name_token_comp) == 0 &&
-      mtime_token_comp >= now - 86400 // &&
-      // type qualification
-    ) std::cout << "." << dir_entry_printable << '\n';
-
-    //if we need to recur
-    if (p.is_directory())
-      main_loop_r(p, L_token, name_token, mtime_token);
-    }
-
-}
-*/
-
 int main(int argc, char **argv) {
 
   //turning argv into a vector of strings because #yolo
@@ -127,7 +92,6 @@ int main(int argc, char **argv) {
       return 1;
     }
     --mtime_iter;
-    // not working? ^^^
     if (arg_list[std::distance(arg_list.begin(),mtime_iter)+1].compare("0") != 0)
     {
       std::cout << "find: invalid argument `" << arg_list[std::distance(arg_list.begin(),mtime_iter)+1] << "' to `-mtime'" << std::endl;
@@ -154,7 +118,6 @@ int main(int argc, char **argv) {
   }
 
   std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  bool once = true;
 
   //TODO: only start at "." if startpath unspecified
   for (auto& p : fs::recursive_directory_iterator(".",L_token))
@@ -168,14 +131,9 @@ int main(int argc, char **argv) {
 
     //for -mtime
     //BUG: mtime_token_comp becomes some time in the future??
+    //BUG: mtime_token_comp always gets the same value
     std::time_t mtime_token_comp = now;
     if (mtime_token) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p.path()));
-
-    if (once) {
-      std::cout << mtime_token_comp << '\n';
-      std::cout << now - 86400 << '\n';
-      once = false;
-    }
 
     //The Holy Mr. If Statment
     if (

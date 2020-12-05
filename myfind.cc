@@ -44,6 +44,20 @@ int execute(const char *pathname, std::vector<std::string> arg_list) {
 }
 */
 
+bool type_match(char type_token, fs::file_status s) {
+  if (type_token == 'b') return fs::is_block_file(s);
+  if (type_token == 'c') return fs::is_character_file(s);
+  if (type_token == 'd') return fs::is_directory(s);
+  if (type_token == 'p') return fs::is_fifo(s);
+  if (type_token == 'f') return fs::is_regular_file(s);
+  if (type_token == 'l') return fs::is_symlink(s);       //some cases where this should never be true based on -L
+                                                         //l also not working when it should might need to follow
+                                                         //the symlink somehow I think the file_status has to be
+                                                         //a symlink_status actually
+  if (type_token == 's') return fs::is_socket(s);
+  return false;
+}
+
 int main(int argc, char **argv) {
 
   //turning argv into a vector of strings because #yolo
@@ -78,8 +92,6 @@ int main(int argc, char **argv) {
       return 1;
   }
 
-
-
   bool mtime_token = false;
   //for -mtime
   auto mtime_iter = std::find(arg_list.begin(),arg_list.end(),"-mtime");
@@ -104,8 +116,8 @@ int main(int argc, char **argv) {
   //for -type
   //TODO: WHAT IF THERE ARE MULTIPLE '-type's !?!?!?!? <- vector of types!!!!!
   //we cant use std::find
-  //auto type_iter = std::find(arg_list.begin(),arg_list.end(),"-type");
-  //char type_token = (type_iter != arg_list.end()) ? arg_list[type_iter+1] : (char) 0;
+  auto type_iter = std::find(arg_list.begin(),arg_list.end(),"-type");
+  char type_token = (type_iter != arg_list.end()) ? arg_list[std::distance(arg_list.begin(),type_iter)+1][0] : (char) 0;
 
   //for -L
   fs::directory_options L_token = (std::find(arg_list.begin(),arg_list.end(),"-L") != arg_list.end()) ?
@@ -133,15 +145,16 @@ int main(int argc, char **argv) {
     std::time_t mtime_token_comp = now;
     if (mtime_token) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p.path()));
 
+    //for -type
+    bool type_token_comp = true;
+    if (type_token != (char) 0) type_token_comp = type_match(type_token,fs::status(p.path()));
+
     //The Holy Mr. If Statment
     if (
       (*(--p.path().end())).compare(name_token_comp) == 0 &&
-      mtime_token_comp >= (now - 86400) // &&
-      // type qualification
+      mtime_token_comp >= (now - 86400) &&
+      type_token_comp
     ) std::cout << "." << dir_entry_printable << '\n';
   }
-
-  // main_loop_r(fs::current_path(),L_token,name_token,mtime_token);
-
   return 0;
 }

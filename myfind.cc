@@ -44,17 +44,16 @@ int execute(const char *pathname, std::vector<std::string> arg_list) {
 }
 */
 
-bool type_match(char type_token, fs::file_status s) {
-  if (type_token == 'b') return fs::is_block_file(s);
-  if (type_token == 'c') return fs::is_character_file(s);
-  if (type_token == 'd') return fs::is_directory(s);
-  if (type_token == 'p') return fs::is_fifo(s);
-  if (type_token == 'f') return fs::is_regular_file(s);
-  if (type_token == 'l') return fs::is_symlink(s);       //some cases where this should never be true based on -L
-                                                         //l also not working when it should might need to follow
-                                                         //the symlink somehow I think the file_status has to be
-                                                         //a symlink_status actually
-  if (type_token == 's') return fs::is_socket(s);
+bool type_match(char type_token, fs::path p) {
+  if (type_token == 'b') return fs::is_block_file(fs::status(p));
+  if (type_token == 'c') return fs::is_character_file(fs::status(p));
+  if (type_token == 'd') return fs::is_directory(fs::status(p));
+  if (type_token == 'p') return fs::is_fifo(fs::status(p));
+  if (type_token == 'f') return fs::is_regular_file(fs::status(p));
+  if (type_token == 'l') return fs::is_symlink(fs::symlink_status(p));       //some cases where this should never be true based on -L
+  if (type_token == 's') return fs::is_socket(fs::status(p));
+  //TODO: print to error and exit gracefully
+  std::cout << "find: Unknown argument to -type: " << type_token << std::endl;
   return false;
 }
 
@@ -64,11 +63,22 @@ int main(int argc, char **argv) {
   std::vector<std::string> arg_list;
   for (int i = 1; i < argc; i++) arg_list.push_back((std::string)argv[i]);
 
+  //for -L
+  fs::directory_options L_token = (std::find(arg_list.begin(),arg_list.end(),"-L") != arg_list.end()) ?
+    fs::directory_options::follow_directory_symlink : fs::directory_options::none;
+
+  fs::path start_path;
+  if (argc > 2 && arg_list[0][0] != '-')
+  {
+    start_path = arg_list[0];
+  } else {
+    start_path = fs::current_path();
+  }
+
+
   //for -name, we find name if it exists and then get the argument "name_token" for future usage
   auto name_iter = std::find(arg_list.begin(),arg_list.end(),"-name");
-
   std::string name_token = "";
-
   //getting name token, this is pretty self explanatory. if the name iter points to the end, there is no name_token for us to get
   // otherwise, we get whatever's after... idk if this works????????? shouldn't it be checking whatever's after name_iter?
   // i think this has a bug, TODO: check if the following is right
@@ -119,10 +129,6 @@ int main(int argc, char **argv) {
   auto type_iter = std::find(arg_list.begin(),arg_list.end(),"-type");
   char type_token = (type_iter != arg_list.end()) ? arg_list[std::distance(arg_list.begin(),type_iter)+1][0] : (char) 0;
 
-  //for -L
-  fs::directory_options L_token = (std::find(arg_list.begin(),arg_list.end(),"-L") != arg_list.end()) ?
-    fs::directory_options::follow_directory_symlink : fs::directory_options::none;
-
   //printing out the initial directory because recursive_directory_iterator always skips it
   //TODO: this is a hack
   if (name_token == "" || name_token == ".") {
@@ -132,10 +138,10 @@ int main(int argc, char **argv) {
   std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
   //TODO: only start at "." if startpath unspecified
-  for (auto& p : fs::recursive_directory_iterator(".",L_token))
+  for (auto& p : fs::recursive_directory_iterator(start_path,L_token))
   {
     //this is for print
-    std::string dir_entry_printable = ((std::string)p.path()).substr(1,((std::string)p.path()).length()-1);
+    std::string dir_entry_printable = fs::relative(p,start_path).string();
 
     //for -name
     std::string name_token_comp = name_token;
@@ -147,14 +153,14 @@ int main(int argc, char **argv) {
 
     //for -type
     bool type_token_comp = true;
-    if (type_token != (char) 0) type_token_comp = type_match(type_token,fs::status(p.path()));
+    if (type_token != (char) 0) type_token_comp = type_match(type_token,p.path());
 
     //The Holy Mr. If Statment
     if (
       (*(--p.path().end())).compare(name_token_comp) == 0 &&
       mtime_token_comp >= (now - 86400) &&
       type_token_comp
-    ) std::cout << "." << dir_entry_printable << '\n';
+    ) std::cout << "./" << dir_entry_printable << '\n';
   }
   return 0;
 }

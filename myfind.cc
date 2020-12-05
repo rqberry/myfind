@@ -130,8 +130,6 @@ int main(int argc, char **argv) {
     if (name_token == "") name_token_comp = *(--p.path().end());
 
     //for -mtime
-    //BUG: mtime_token_comp becomes some time in the future??
-    //BUG: mtime_token_comp always gets the same value
     std::time_t mtime_token_comp = now;
     if (mtime_token) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p.path()));
 

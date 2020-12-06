@@ -109,11 +109,25 @@ int parse_type(std::vector<std::string> args) {
   type_token = args.front();
   args.erase(args.begin());
 
+  if (type_token[type_token.size()] == ',')
+  {
+    std::cout << "find: Last file type in list argument to -type is missing, i.e., list is ending on: ','" << '\n';
+    return 1;
+  }
+
+  //remove ',' delimiters
+  type_token.erase(std::remove(type_token.begin(),type_token.end(),','),type_token.end());
+
   //if type_token contains a space, print an error to cerr
+  std::string chars = "bcdpfls";
   for (auto s : type_token){
-    if (s ==' ')
+    if (s == ' ')
     {
       std::cerr<<"find: Must separate multiple arguments to -type using: ','"<<std::endl;
+      return 1;
+    }
+    if (chars.find(s) == std::string::npos) {
+      std::cerr << "find: Unknown argument to -type: " << s << std::endl;
       return 1;
     }
   }
@@ -181,32 +195,34 @@ int arg_interpret(std::vector<std::string> &arg_list) {
   std::string cmd = arg_list[0];
   arg_list.erase(arg_list.begin());
 
-  if (cmd.compare("-name") == 0) parse_name(arg_list);
-  else if (cmd.compare("-mtime") == 0) parse_mtime(arg_list);
-  else if (cmd.compare("-type") == 0) parse_type(arg_list);
-  else if (cmd.compare("-exec") == 0) parse_exec(arg_list);
-  else {
+  if (cmd.compare("-name") == 0) {
+    if (parse_name(arg_list)) return 1;
+  } else if (cmd.compare("-mtime") == 0) {
+    if (parse_mtime(arg_list)) return 1;
+  } else if (cmd.compare("-type") == 0) {
+    if (parse_type(arg_list)) return 1;
+  } else if (cmd.compare("-exec") == 0) {
+    if (parse_exec(arg_list)) return 1;
+  } else {
     std::cerr<<"find: unknown predicate `"<<cmd<<"\'"<<std::endl;
     return 1;
   }
   return 0;
 }
 
-bool type_match(char type_token, fs::path p) {
+bool type_match(char type_token, fs::path p, fs::directory_options L_token) {
   if (type_token == 'b') return fs::is_block_file(fs::status(p));
   if (type_token == 'c') return fs::is_character_file(fs::status(p));
   if (type_token == 'd') return fs::is_directory(fs::status(p));
   if (type_token == 'p') return fs::is_fifo(fs::status(p));
   if (type_token == 'f') return fs::is_regular_file(fs::status(p));
-  if (type_token == 'l') return fs::is_symlink(fs::symlink_status(p));   //need the link not the target
+  if (type_token == 'l' && L_token != fs::directory_options::follow_directory_symlink) return fs::is_symlink(fs::symlink_status(p));   //need the link not the target
   if (type_token == 's') return fs::is_socket(fs::status(p));
-  //TODO: exit???
-  std::cerr << "find: Unknown argument to -type: " << type_token << std::endl;
   return false;
 }
 
 
-void print_entry(fs::path p, std::string p_print) {
+int print_entry(fs::path p, fs::directory_options L_token/*, std::string p_print, , fs::path start_path*/) {
   std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   //this is for print
 
@@ -221,9 +237,11 @@ void print_entry(fs::path p, std::string p_print) {
 
   //for -type
   bool type_token_comp;
+
   if (!type_token.empty()) {
     for(char c : type_token) {
-      type_token_comp |= type_match(c,p);
+
+      type_token_comp |= type_match(c,p,L_token);
     }
   } else {
      type_token_comp = true;
@@ -234,7 +252,8 @@ void print_entry(fs::path p, std::string p_print) {
     (*(--p.end())).compare(name_token_comp) == 0 &&
     mtime_token_comp >= (now - 86400) &&
     type_token_comp
-  ) std::cout <<p_print<< '\n';
+  ) std::cout <<p.string()<< '\n';
+  return 0;
 }
 
 int main(int argc, char **argv) {
@@ -268,10 +287,14 @@ int main(int argc, char **argv) {
 
   //for start_path
   fs::path start_path = fs::current_path();
-  fs::path search_path = fs::current_path();
+  fs::path search_path = ".";
   if (!arg_list.empty() && arg_list[0][0][0] != '-')
   {
     search_path = arg_list[0][0];
+    if (!fs::exists(search_path)) {
+      std::cout << "find: ‘"<<search_path.string()<<"’: No such file or directory" << '\n';
+      return 1;
+    }
     arg_list.erase(arg_list.begin());
   }
 
@@ -286,17 +309,11 @@ int main(int argc, char **argv) {
 
   if (!(L_token == fs::directory_options::follow_directory_symlink && !fs::is_symlink(fs::symlink_status(search_path))))
   {
-    std::string p_print = fs::proximate(search_path,start_path).string();
-    if (search_path != start_path && search_path.string().compare("..") != 0) p_print += '/';
-    print_entry(search_path, p_print);
+    if(print_entry(search_path,L_token)) return 1;
   }
-  //TODO: only start at "." if startpath unspecified
   for (auto& p : fs::recursive_directory_iterator(search_path,L_token))
   {
-
-    std::string p_print = fs::proximate(p.path(),start_path).string();
-    if (search_path == start_path) p_print = fs::proximate(search_path,start_path).string() + '/' + p_print;
-    print_entry(p.path(),p_print);
+    if(print_entry(p.path(),L_token)) return 1;
   }
   return 0;
 }

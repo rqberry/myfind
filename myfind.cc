@@ -14,7 +14,7 @@
 namespace fs = std::filesystem;
 
 std::string name_token = "";
-bool mtime_token = false;
+double mtime_token = -1;
 std::string type_token = "";
 
 //this is strtok_r but for c++
@@ -78,12 +78,14 @@ int parse_mtime(std::vector<std::string> args) {
     return 1;
   }
   args = finalize_tokens(args);
-  if (args.front().compare("0") != 0)
+
+  char* endptr = 0;
+  mtime_token = strtod(args.front().c_str(), &endptr);
+  if(*endptr != '\0' || endptr == args.front().c_str())
   {
     std::cerr << "find: invalid argument `" << args.front() << "' to `-mtime'" << std::endl;
     return 1;
   }
-  mtime_token = true;
   args.erase(args.begin());
   if (!args.empty())
   {
@@ -138,15 +140,6 @@ int parse_type(std::vector<std::string> args) {
   }
 
   return 0;
-
-
-
-  //for -type
-  //TODO: WHAT IF THERE ARE MULTIPLE '-type's !?!?!?!? <- vector of types!!!!!
-  //we cant use std::find
-  //auto type_iter = std::find(arg_list.begin(),arg_list.end(),"-type");
-  //(type_iter != arg_list.end()) ? : '\0'
-  //char type_token =  arg_list[std::distance(arg_list.begin(),type_iter)+1][0];
 }
 
 
@@ -155,15 +148,13 @@ int parse_exec(std::vector<std::string> args) {
   /*
   if (args.empty())
   {
-    std::cerr<<"find: missing argument to `"<<args<<"\'"<<std::endl;
+    std::cerr<<"find: missing argument to `-exec\'"<<std::endl;
     return 1;
   }
   // creating argv on the stack
-  size_t size_arglist = arg_list.size();
-  char* argv[size_arglist];
+  char* char_args[args.size()];
 
   int i = 0;
-  exec_iter++;
   char *arg;
   //char * cstr = new char [str.length()+1];
   ///std::strcpy (cstr, str.c_str());
@@ -172,7 +163,7 @@ int parse_exec(std::vector<std::string> args) {
 
 
   //TODO: print "find: missing argument to `-exec'" for no \; || ';'
-  while (exec_iter < arg_list.end() &&
+  while (i < args.size() &&
     (arg_list[std::distance(arg_list.begin(),exec_iter)].compare("\\;") != 0 ||
     arg_list[std::distance(arg_list.begin(),exec_iter)].compare("';'") != 0))
   {
@@ -185,8 +176,8 @@ int parse_exec(std::vector<std::string> args) {
   execv(pathname, const_cast<char**>(argv));
   //TODO: also remember to assert if the exec returns not 0;
   //TODO: execv errors must be find: errors (we can just append find: to begin of the execv error)
-  */
   return 0;
+  */
 }
 
 
@@ -233,14 +224,13 @@ int print_entry(fs::path p, fs::directory_options L_token/*, std::string p_print
 
   //for -mtime
   std::time_t mtime_token_comp = now;
-  if (mtime_token) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p));
+  if (mtime_token != -1) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p));
 
   //for -type
   bool type_token_comp;
 
   if (!type_token.empty()) {
     for(char c : type_token) {
-
       type_token_comp |= type_match(c,p,L_token);
     }
   } else {
@@ -250,7 +240,8 @@ int print_entry(fs::path p, fs::directory_options L_token/*, std::string p_print
   //The Holy Mr. If Statment
   if (
     (*(--p.end())).compare(name_token_comp) == 0 &&
-    mtime_token_comp >= (now - 86400) &&
+    mtime_token_comp >= (now - (mtime_token+1)*86400) &&
+    mtime_token_comp <= (now - (mtime_token)*86400) &&
     type_token_comp
   ) std::cout <<p.string()<< '\n';
   return 0;

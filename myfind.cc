@@ -185,7 +185,6 @@ int parse_print(std::vector<std::string> args) {
   if (!args.empty())
   {
     std::cerr<<"find: paths must precede expression: `"<<args.front()<<"\'"<<std::endl;
-
     if(fs::exists(args.front())) std::cerr<<"find: possible unquoted pattern after predicate `-print'?"<<std::endl;
     return 1;
   }

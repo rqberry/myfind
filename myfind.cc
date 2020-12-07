@@ -181,8 +181,15 @@ int parse_exec(std::vector<std::string> args) {
 }
 
 
-bool parse_print(std::vector<std::string> args) {
-  return true;
+int parse_print(std::vector<std::string> args) {
+  if (!args.empty())
+  {
+    std::cerr<<"find: paths must precede expression: `"<<args.front()<<"\'"<<std::endl;
+
+    if(fs::exists(args.front())) std::cerr<<"find: possible unquoted pattern after predicate `-print'?"<<std::endl;
+    return 1;
+  }
+  return 0;
 }
 
 // loops through arg_list, parses each argument.
@@ -248,12 +255,13 @@ int print_entry(fs::path p, fs::directory_options L_token, std::vector<std::vect
           exec_arg += arg;
           if (arg.compare(args.back()) != 0) exec_arg += " ";
           //i++;
+
         }
         /*
         std::cout << fs::absolute(p).string().c_str() << " : ";
         std::cout << char_args[0] << " ";
         std::cout << char_args[1] << '\n';*/
-        if (/*execv(fs::absolute(p).string().c_str(),char_args) == -1*/system(exec_arg.c_str()) || print_token) std::cout <<p.string()<< '\n';
+        if (/*execv(fs::absolute(p).string().c_str(),char_args) == -1*/system(exec_arg.c_str()) == 0 && print_token) std::cout <<p.string()<< '\n';
         //delete[] char_args;
       }
     } else std::cout <<p.string()<< '\n';
@@ -331,9 +339,9 @@ int main(int argc, char **argv) {
       if (parse_exec(arg_list[0])) return 1;
       exec_args.push_back(arg_list[0]);
   //    we_did_calloc = true;
-    } else if (cmd.compare("-print")) {
-      print_token = parse_print(arg_list[0]);
-      if (!print_token) return 1;
+    } else if (cmd.compare("-print") == 0) {
+      if (parse_print(arg_list[0]) != 0) return 1;
+      print_token = true;
     } else {
       std::cerr<<"find: unknown predicate `"<<cmd<<"\'"<<std::endl;
       return 1;

@@ -9,7 +9,10 @@ RED="\e[31m"
 NC="\e[39m"
 declare -a args=("" "." ".." "../.." "test_dir" "test_dir/a" "test_dir ." "\". ..\""
 		 "test_dir -name" "-name george" "-name README.md" "-name . ." "-name \". .\" ."
-		"")
+		 "-type b" "-type c" "-type d" "-type p" "-type f" "-type l" "-type s"  
+		 "-type b,f" "-type c,f" "-type d,f" "-type p,f" "-type f,l" "-type l,d" "-type s,l" 
+		 "-type b -type c" "-type d -type l" "-type p -type f"  "-type s" 
+		)
 find=$(realpath myfind)
 
 
@@ -37,7 +40,6 @@ done
 #rm test.out
 #rm crct.out
 #rm crct.err
-make clean  > /dev/null
 
 # Assumes a file $test_dir that contains folders. The name of these folders is
 # the name of the test. Each folder contains a file "args" which is a string fed

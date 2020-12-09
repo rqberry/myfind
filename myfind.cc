@@ -52,8 +52,8 @@ std::string parse_name(std::vector<std::string> args) {
   //if there's more than one argument to -name, throw an error
   if (!args.empty())
   {
-    std::cerr<<"find: paths must precede expression: `"<<args.front()<<"\'"
-    <<std::endl;
+    std::cerr<<"find: paths must precede expression: `"<<args.front()<<"\'"<<std::endl;
+    if(fs::exists(args.front())) std::cerr<<"find: possible unquoted pattern after predicate `-name'?"<<std::endl;
     return "";
   }
   //for / anywhere in the argument
@@ -89,8 +89,8 @@ double parse_mtime(std::vector<std::string> args) {
   args.erase(args.begin());
   if (!args.empty())
   {
-    std::cerr<<"find: paths must precede expression: `"<<args.front()<<"\'"
-    <<std::endl;
+    std::cerr<<"find: paths must precede expression: `"<<args.front()<<"\'"<<std::endl;
+    if(fs::exists(args.front())) std::cerr<<"find: possible unquoted pattern after predicate `-mtime'?"<<std::endl;
     return -1;
   }
   return mtime_token;
@@ -201,7 +201,7 @@ int parse_print(std::vector<std::string> args) {
 bool type_match(char type_token, fs::path p, fs::directory_options L_token) {
   if (type_token == 'b') return fs::is_block_file(fs::status(p));
   if (type_token == 'c') return fs::is_character_file(fs::status(p));
-  if (type_token == 'd') return fs::is_directory(fs::status(p));
+  if (type_token == 'd') return fs::is_directory(fs::status(p)) && !fs::is_symlink(fs::symlink_status(p));// && L_token == fs::directory_options::none));
   if (type_token == 'p') return fs::is_fifo(fs::status(p));
   if (type_token == 'f') return fs::is_regular_file(fs::status(p));
   if (type_token == 'l'
@@ -302,19 +302,20 @@ int main(int argc, char **argv) {
   //for start_path
   fs::path start_path = fs::current_path();
   std::vector<fs::path> search_paths;
+  bool push_dot = true;
 
   while (!arg_list.empty() && arg_list[0][0][0] != '-')
   {
-
-
     search_paths.push_back(arg_list[0][0]);
     if (!fs::exists(search_paths.back())) {
       std::cerr << "find: ‘"<<search_paths.back().string()<<"’: No such file or directory" << '\n';
+      search_paths.pop_back();
+      push_dot = false;
     }
     arg_list.erase(arg_list.begin());
   }
 
-  if (search_paths.empty()) search_paths.push_back(".");
+  if (push_dot && search_paths.empty()) search_paths.push_back(".");
 
   std::string name_token = "";
   double mtime_token = -1;

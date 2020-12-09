@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 
+make > /dev/null
+
 echo -e "\n\n\t\e[1m\e[32m Start Integration Tests\e[0m\n"
 
 GREEN="\e[32m"
 RED="\e[31m"
 NC="\e[39m"
-args=test_dir
+declare -a args=("" "." ".." "../.." "test_dir" "test_dir/a" "test_dir ." "\". ..\""
+		 "test_dir -name" "-name george" "-name README.md" "-name . ." "-name \". .\" ."
+		"")
 find=$(realpath myfind)
 
 
@@ -15,24 +19,25 @@ fail () {
     all_passed=false
 }
 pass () {
-    echo -e "\e[32mok\e[39m"
+    echo -e "\e[32mpassed\e[39m"
 }
 
 # Test 1: one small file single threaded
-echo -n "Test 1: "
+echo "Test 1: "
 
-$find $args > test.out 2> test.err
-find $args  > crct.out 2> crct.err
-echo -n "Testing $tst with arg: $args ... "
-diff test.out crct.out > /dev/null && \
-    diff test.err crct.err > /dev/null && \
-    pass || fail
-
-rm test.err
-rm test.out
-rm crct.out
-rm crct.err
-
+for arg in "${args[@]}"; do
+    $find $arg > test.out 2> test.err
+    find $arg  > crct.out 2> crct.err
+    echo -n "Test Argument: $arg ... "
+    diff test.out crct.out > /dev/null && \
+        diff test.err crct.err > /dev/null && \
+        pass || fail
+done
+#rm test.err
+#rm test.out
+#rm crct.out
+#rm crct.err
+make clean  > /dev/null
 
 # Assumes a file $test_dir that contains folders. The name of these folders is
 # the name of the test. Each folder contains a file "args" which is a string fed

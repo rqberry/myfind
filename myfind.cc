@@ -310,7 +310,6 @@ int main(int argc, char **argv) {
     search_paths.push_back(arg_list[0][0]);
     if (!fs::exists(search_paths.back())) {
       std::cerr << "find: ‘"<<search_paths.back().string()<<"’: No such file or directory" << '\n';
-      return 1;
     }
     arg_list.erase(arg_list.begin());
   }

@@ -76,7 +76,7 @@ double parse_mtime(std::vector<std::string> args) {
     return -1;
   }
   args = finalize_tokens(args);
-
+  //here we check to make sure -mtime only gets good arguments
   char* endptr = 0;
   double mtime_token = strtod(args.front().c_str(), &endptr);
   if(*endptr != '\0' || endptr == args.front().c_str())
@@ -85,7 +85,7 @@ double parse_mtime(std::vector<std::string> args) {
     << std::endl;
     return -1;
   }
-  //check that mtime's arguments  
+  //check that mtime doesn't have too many arguments
   args.erase(args.begin());
   if (!args.empty())
   {
@@ -99,7 +99,6 @@ double parse_mtime(std::vector<std::string> args) {
 
 //this should return a list of the types we're looking for
 std::string parse_type(std::vector<std::string> args) {
-  //first parse the args, delimiting with commas
   if (args.empty())
   {
     std::cerr<<"find: missing argument to `-type\'"<<std::endl;
@@ -109,9 +108,10 @@ std::string parse_type(std::vector<std::string> args) {
   //go through the tokens, anything inside quotes is one argument
   args = finalize_tokens(args);
 
+  //popping the first argument
   std::string type_token = args.front();
   args.erase(args.begin());
-
+  //these errors should be super self explanatory. it's pretty obvious what we're doing here
   if (type_token[type_token.size()-1] == ',')
   {
     std::cerr << "find: Last file type in list argument to -type is missing,"<<
@@ -119,13 +119,11 @@ std::string parse_type(std::vector<std::string> args) {
     return "";
   }
 
-  //remove ',' delimiters
-
-
-  //if type_token contains a space, print an error to cerr
+  //checking to make sure type_token is a comma separated list
   std::string chars = "bcdpfls";
   bool not_delim = true;
   for (auto s : type_token){
+    //it goes back and forth between expecting a comma (not_delim = false) and expecting one of chars
     if (not_delim)
     {
       if (chars.find(s) == std::string::npos) {
@@ -143,6 +141,7 @@ std::string parse_type(std::vector<std::string> args) {
       not_delim = true;
     }
   }
+
 
   if (!args.empty())
   {
@@ -302,23 +301,26 @@ int main(int argc, char **argv) {
 
   //for start_path
   fs::path start_path = fs::current_path();
-  fs::path search_path = ".";
-  if (!arg_list.empty() && arg_list[0][0][0] != '-')
+  std::vector<fs::path> search_paths;
+
+  while (!arg_list.empty() && arg_list[0][0][0] != '-')
   {
-    search_path = arg_list[0][0];
-    if (!fs::exists(search_path)) {
-      std::cerr << "find: ‘"<<search_path.string()<<"’: No such file or directory" << '\n';
+
+
+    search_paths.push_back(arg_list[0][0]);
+    if (!fs::exists(search_paths.back())) {
+      std::cerr << "find: ‘"<<search_paths.back().string()<<"’: No such file or directory" << '\n';
       return 1;
     }
     arg_list.erase(arg_list.begin());
   }
 
+  if (search_paths.empty()) search_paths.push_back(".");
+
   std::string name_token = "";
   double mtime_token = -1;
   std::string type_token = "";
   bool print_token = false;
-
-  //bool we_did_calloc = false;
 
   //arg_interpret each arg
   std::vector<std::vector<std::string>> exec_args;
@@ -352,19 +354,20 @@ int main(int argc, char **argv) {
     arg_list.erase(arg_list.begin());
   }
 
-  //find search_path
-  if(print_entry(search_path,L_token,exec_args,name_token,mtime_token,type_token,print_token)) return 1;
-  if(!fs::is_directory(fs::status(search_path))) return 0;
-  if (fs::is_symlink(fs::symlink_status(search_path)) && L_token == fs::directory_options::none) return 0;
-  //find subdirectories
-  for (auto& p : fs::recursive_directory_iterator(search_path,L_token))
-  {
-    //print entries runs all the commands
-    if(print_entry(p.path(),L_token,exec_args,name_token,mtime_token,type_token,print_token)) return 1;
+  for (fs::path search_path : search_paths) {
+    //find search_path
+    if(print_entry(search_path,L_token,exec_args,name_token,mtime_token,type_token,print_token)) return 1;
+    //find subdirectories
+    if (fs::is_directory(fs::status(search_path)) ||
+       (fs::is_symlink(fs::symlink_status(search_path)) && L_token == fs::directory_options::none)) {
+      for (auto& p : fs::recursive_directory_iterator(search_path,L_token))
+      {
+        //print entries runs all the commands
+        if(print_entry(p.path(),L_token,exec_args,name_token,mtime_token,type_token,print_token)) return 1;
+      }
+    }
+
   }
 
-//  if (we_did_calloc) {
-  //  delete[] exec_args[exec_args.size()-1];
-//}
   return 0;
 }

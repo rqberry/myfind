@@ -14,6 +14,9 @@
 
 namespace fs = std::filesystem;
 
+
+//this takes a string of vectors and parses the arguments to a format that's easily parseable
+//it merges things inside quotes.
 std::vector<std::string> finalize_tokens(std::vector<std::string> &args){
   std::vector<std::string> finalized_tokens;
   size_t i = 0;
@@ -34,28 +37,26 @@ std::vector<std::string> finalize_tokens(std::vector<std::string> &args){
   return finalized_tokens;
 }
 
-//to parse, we first separate by spaces. then we go through that vector, and merge all the things in quotes
+//this is a helper function for the -name argument. it just checks to make sure that -name is valid.
 std::string parse_name(std::vector<std::string> args) {
   if (args.empty())
   {
     std::cerr<<"find: missing argument to `-name\'"<<std::endl;
     return "";
   }
-
-  //create a list of all the tokens
-
   //go through the tokens, anything inside quotes is one argument
   args = finalize_tokens(args);
-
+  //pop the first argument to -name
   std::string name_token = args.front();
   args.erase(args.begin());
+  //if there's more than one argument to -name, throw an error
   if (!args.empty())
   {
     std::cerr<<"find: paths must precede expression: `"<<args.front()<<"\'"
     <<std::endl;
     return "";
   }
-  //TODO: for / at end or maybe anywhere?
+  //for / anywhere in the argument
   if (name_token.find('/') != std::string::npos) {
     std::cerr << "find: warning: ‘-name’ matches against basenames only, but" <<
     " the given pattern contains a directory separator (‘/’), thus the expres"<<
@@ -66,6 +67,8 @@ std::string parse_name(std::vector<std::string> args) {
   return name_token;
 }
 
+
+//this is a helper function for -mtime. it makes sure the argument for -mtime is valid
 double parse_mtime(std::vector<std::string> args) {
   if (args.empty())
   {
@@ -82,6 +85,7 @@ double parse_mtime(std::vector<std::string> args) {
     << std::endl;
     return -1;
   }
+  //check that mtime's arguments  
   args.erase(args.begin());
   if (!args.empty())
   {
@@ -170,7 +174,6 @@ int parse_exec(std::vector<std::string> args) {
       args.back().compare("';'") != 0 &&
       args.back().compare("\";\"") != 0*/)
   {
-    std::cout << args.back() << '\n';
     std::cerr << "find: missing argument to `-exec'" << std::endl;
     return 1;
   } else {

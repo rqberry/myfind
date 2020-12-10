@@ -26,10 +26,9 @@ declare -a args=("" "." ".." "../.." "test_dir" "test_dir/a" "test_dir ." "\". .
 		)
 find=$(realpath myfind)
 
-
 fail () {
     echo -en "\e[31mfailed\e[39m"
-    echo " Test: $test Argument: $arg ... "
+    echo " Test: $test Argument: $arg"
     #exit
 }
 pass () {

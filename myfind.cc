@@ -138,12 +138,12 @@ std::string parse_type(std::vector<std::string> args) {
   return type_token;
 }
 
+//helper function for -exec which ensures -exec call is without error
 int parse_exec(std::vector<std::string> args) {
   if (args.empty()) {
     std::cerr<<"find: missing argument to `-exec\'"<<std::endl;
     return 1;
   }
-
   if (args.back().compare(";") != 0) {
     std::cerr << "find: missing argument to `-exec'" << std::endl;
     return 1;
@@ -153,6 +153,7 @@ int parse_exec(std::vector<std::string> args) {
   return 0;
 }
 
+//helper function for -print which ensures that -print call is without error
 int parse_print(std::vector<std::string> args) {
   if (!args.empty()) {
     std::cerr<<"find: paths must precede expression: `"<<args.front()<<"\'"<<std::endl;
@@ -165,18 +166,20 @@ int parse_print(std::vector<std::string> args) {
 bool type_match(char type_token, fs::path p, fs::directory_options L_token) {
   if (type_token == 'b') return fs::is_block_file(fs::status(p));
   if (type_token == 'c') return fs::is_character_file(fs::status(p));
-  if (type_token == 'd') return fs::is_directory(fs::status(p)) && !fs::is_symlink(fs::symlink_status(p));// && L_token == fs::directory_options::none));
+  if (type_token == 'd') return fs::is_directory(fs::status(p)) && !fs::is_symlink(fs::symlink_status(p));
   if (type_token == 'p') return fs::is_fifo(fs::status(p));
   if (type_token == 'f') return fs::is_regular_file(fs::status(p));
-  if (type_token == 'l' && L_token == fs::directory_options::none) return fs::is_symlink(fs::symlink_status(p))/* && !fs::is_directory(fs::status(p))*/;   //need the link not the target
+  if (type_token == 'l' && L_token == fs::directory_options::none) return fs::is_symlink(fs::symlink_status(p));
   if (type_token == 's') return fs::is_socket(fs::status(p));
   return false;
 }
 
-
+//print_entry takes all tokens and determines if an entry should be printed
+//print_entry also runs -exec on any entries to be printed and prints according
+//to -print and the return value of -exec
 int print_entry(fs::path p,
                 fs::directory_options L_token,
-                std::vector<std::vector<std::string>> exec_args,
+                std::vector<std::vector<std::string>> exec_tokens,
                 std::vector<std::string> name_tokens,
                 std::vector<double> mtime_tokens,
                 std::vector<std::string> type_tokens,
@@ -223,10 +226,10 @@ int print_entry(fs::path p,
 
   //The Holy Mr. If Statment
   if (name_bool && mtime_bool && type_bool) {
-    if (!exec_args.empty()) {
+    if (!exec_tokens.empty()) {
       //for -exec
       std::string exec_arg;
-      for (std::vector<std::string> args : exec_args) {
+      for (std::vector<std::string> args : exec_tokens) {
         for (std::string arg : args) {
           size_t start = arg.find("{}");
           if (start != std::string::npos) arg.replace(start,2,p.string());
@@ -240,6 +243,11 @@ int print_entry(fs::path p,
   return 0;
 }
 
+//the main of myfind.cc does the work of turning argv into a usable vector of
+//arguments and parses each of those argument "tokens" based upon the implemented
+//arguments of myfind.cc. After parsing each token, main calls print_entry on
+//each directory entry that needs to be looked at according to the search_path
+//and the -L token 
 int main(int argc, char **argv) {
 
   //turning argv into a vector of strings
@@ -293,12 +301,13 @@ int main(int argc, char **argv) {
   bool print_token = false;
 
   //arg_interpret each arg
-  std::vector<std::vector<std::string>> exec_args;
+  std::vector<std::vector<std::string>> exec_tokens;
   while (!arg_list.empty()) {
 
     std::string cmd = arg_list[0][0];
     arg_list[0].erase(arg_list[0].begin());
 
+    //here we parse tokens
     if (cmd.compare("-name") == 0) {
       name_tokens.push_back(parse_name(arg_list[0]));
       if (name_tokens.back().empty()) return 1;
@@ -311,7 +320,7 @@ int main(int argc, char **argv) {
     } else if (cmd.compare("-exec") == 0) {
       //this just reformats the args for -exec
       if (parse_exec(arg_list[0])) return 1;
-      exec_args.push_back(arg_list[0]);
+      exec_tokens.push_back(arg_list[0]);
     } else if (cmd.compare("-print") == 0) {
       if (parse_print(arg_list[0]) != 0) return 1;
       print_token = true;
@@ -324,10 +333,10 @@ int main(int argc, char **argv) {
   }
 
   for (fs::path search_path : search_paths) {
-    //find search_path
+    //print_entry takes all the tokens and decides what to print for them. basically, it does most of the work
     if (print_entry(search_path,
                     L_token,
-                    exec_args,
+                    exec_tokens,
                     name_tokens,
                     mtime_tokens,
                     type_tokens,
@@ -341,7 +350,7 @@ int main(int argc, char **argv) {
         //print entries runs all the commands
         if (print_entry(p.path(),
                         L_token,
-                        exec_args,
+                        exec_tokens,
                         name_tokens,
                         mtime_tokens,
                         type_tokens,

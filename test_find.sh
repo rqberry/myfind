@@ -44,11 +44,6 @@ for arg in "${args[@]}"; do
     test=$((test+1))
 done
 
-rm crct.out
-rm crct.err
-rm test.out
-rm test.err
-
 make clean > /dev/null
 
 # Assumes a file $test_dir that contains folders. The name of these folders is

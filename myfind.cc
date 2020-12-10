@@ -17,15 +17,14 @@ namespace fs = std::filesystem;
 
 //this takes a string of vectors and parses the arguments to a format that's easily parseable
 //it merges things inside quotes.
-std::vector<std::string> finalize_tokens(std::vector<std::string> &args){
+std::vector<std::string> finalize_tokens(std::vector<std::string> &args) {
   std::vector<std::string> finalized_tokens;
   size_t i = 0;
-  while(i < args.size()) {
+  while (i < args.size()) {
     std::string current_word = args[i];
-    if (current_word[0] == '"' ){
+    if (current_word[0] == '"' ) {
       i++;
-      while(args[i][args[i].length()-1] != '\"' && i < args.size())
-      {
+      while (args[i][args[i].length()-1] != '\"' && i < args.size()) {
         current_word.append(args[i]);
         i++;
       }
@@ -39,21 +38,17 @@ std::vector<std::string> finalize_tokens(std::vector<std::string> &args){
 
 //this is a helper function for the -name argument. it just checks to make sure that -name is valid.
 std::string parse_name(std::vector<std::string> args) {
-  if (args.empty())
-  {
+  if (args.empty()) {
     std::cerr<<"find: missing argument to `-name\'"<<std::endl;
     return "";
   }
-  //go through the tokens, anything inside quotes is one argument
-  args = finalize_tokens(args);
   //pop the first argument to -name
   std::string name_token = args.front();
   args.erase(args.begin());
   //if there's more than one argument to -name, throw an error
-  if (!args.empty())
-  {
+  if (!args.empty()) {
     std::cerr<<"find: paths must precede expression: `"<<args.front()<<"\'"<<std::endl;
-    if(fs::exists(args.front())) std::cerr<<"find: possible unquoted pattern after predicate `-name'?"<<std::endl;
+    if (fs::exists(args.front())) std::cerr<<"find: possible unquoted pattern after predicate `-name'?"<<std::endl;
     return "";
   }
   //for / anywhere in the argument
@@ -70,27 +65,23 @@ std::string parse_name(std::vector<std::string> args) {
 
 //this is a helper function for -mtime. it makes sure the argument for -mtime is valid
 double parse_mtime(std::vector<std::string> args) {
-  if (args.empty())
-  {
+  if (args.empty()) {
     std::cerr<<"find: missing argument to `-mtime\'"<<std::endl;
     return -1;
   }
-  args = finalize_tokens(args);
   //here we check to make sure -mtime only gets good arguments
   char* endptr = 0;
   double mtime_token = strtod(args.front().c_str(), &endptr);
-  if(*endptr != '\0' || endptr == args.front().c_str())
-  {
+  if (*endptr != '\0' || endptr == args.front().c_str()) {
     std::cerr << "find: invalid argument `" << args.front() << "' to `-mtime'"
     << std::endl;
     return -1;
   }
   //check that mtime doesn't have too many arguments
   args.erase(args.begin());
-  if (!args.empty())
-  {
+  if (!args.empty()) {
     std::cerr<<"find: paths must precede expression: `"<<args.front()<<"\'"<<std::endl;
-    if(fs::exists(args.front())) std::cerr<<"find: possible unquoted pattern after predicate `-mtime'?"<<std::endl;
+    if (fs::exists(args.front())) std::cerr<<"find: possible unquoted pattern after predicate `-mtime'?"<<std::endl;
     return -1;
   }
   return mtime_token;
@@ -99,21 +90,16 @@ double parse_mtime(std::vector<std::string> args) {
 
 //this should return a list of the types we're looking for
 std::string parse_type(std::vector<std::string> args) {
-  if (args.empty())
-  {
+  if (args.empty()) {
     std::cerr<<"find: missing argument to `-type\'"<<std::endl;
     return "";
   }
-
-  //go through the tokens, anything inside quotes is one argument
-  args = finalize_tokens(args);
 
   //popping the first argument
   std::string type_token = args.front();
   args.erase(args.begin());
   //these errors should be super self explanatory. it's pretty obvious what we're doing here
-  if (type_token[type_token.size()-1] == ',')
-  {
+  if (type_token[type_token.size()-1] == ',') {
     std::cerr << "find: Last file type in list argument to -type is missing,"<<
     " i.e., list is ending on: ','" << std::endl;
     return "";
@@ -122,18 +108,16 @@ std::string parse_type(std::vector<std::string> args) {
   //checking to make sure type_token is a comma separated list
   std::string chars = "bcdpfls";
   bool not_delim = true;
-  for (auto s : type_token){
+  for (auto s : type_token) {
     //it goes back and forth between expecting a comma (not_delim = false) and expecting one of chars
-    if (not_delim)
-    {
+    if (not_delim) {
       if (chars.find(s) == std::string::npos) {
         std::cerr << "find: Unknown argument to -type: " << s << std::endl;
         return "";
       }
       not_delim = false;
     } else {
-      if (s != ',')
-      {
+      if (s != ',') {
         std::cerr<<"find: Must separate multiple arguments to -type using: ','"
         <<std::endl;
         return "";
@@ -142,11 +126,9 @@ std::string parse_type(std::vector<std::string> args) {
     }
   }
 
-
-  if (!args.empty())
-  {
+  if (!args.empty()) {
     std::cerr<<"find: paths must precede expression: `"<<args.front()<<"\'"<<std::endl;
-    if(fs::exists(args.front())) std::cerr<<"find: possible unquoted pattern after predicate `-type'?"<<std::endl;
+    if (fs::exists(args.front())) std::cerr<<"find: possible unquoted pattern after predicate `-type'?"<<std::endl;
     return "";
   }
 
@@ -156,47 +138,29 @@ std::string parse_type(std::vector<std::string> args) {
   return type_token;
 }
 
-
-//todo: make sure it checks path, not just local files
 int parse_exec(std::vector<std::string> args) {
-  if (args.empty())
-  {
+  if (args.empty()) {
     std::cerr<<"find: missing argument to `-exec\'"<<std::endl;
     return 1;
   }
 
-/* gonna needa do this later
-  // creating argv on the stack
-
-*/
-  if (args.back().compare(";") != 0/* &&
-      args.back().compare("';'") != 0 &&
-      args.back().compare("\";\"") != 0*/)
-  {
+  if (args.back().compare(";") != 0) {
     std::cerr << "find: missing argument to `-exec'" << std::endl;
     return 1;
   } else {
     args.pop_back();
   }
-
   return 0;
 }
 
-
 int parse_print(std::vector<std::string> args) {
-  if (!args.empty())
-  {
+  if (!args.empty()) {
     std::cerr<<"find: paths must precede expression: `"<<args.front()<<"\'"<<std::endl;
-    if(fs::exists(args.front())) std::cerr<<"find: possible unquoted pattern after predicate `-print'?"<<std::endl;
+    if (fs::exists(args.front())) std::cerr<<"find: possible unquoted pattern after predicate `-print'?"<<std::endl;
     return 1;
   }
   return 0;
 }
-
-// loops through arg_list, parses each argument.
-/*int arg_interpret(std::vector<std::string> &arg_list) {
-
-}*/
 
 bool type_match(char type_token, fs::path p, fs::directory_options L_token) {
   if (type_token == 'b') return fs::is_block_file(fs::status(p));
@@ -210,7 +174,14 @@ bool type_match(char type_token, fs::path p, fs::directory_options L_token) {
 }
 
 
-int print_entry(fs::path p, fs::directory_options L_token, std::vector<std::vector<std::string>> exec_args, std::vector<std::string> name_tokens, std::vector<double> mtime_tokens, std::vector<std::string> type_tokens, bool print_token) {
+int print_entry(fs::path p,
+                fs::directory_options L_token,
+                std::vector<std::vector<std::string>> exec_args,
+                std::vector<std::string> name_tokens,
+                std::vector<double> mtime_tokens,
+                std::vector<std::string> type_tokens,
+                bool print_token) {
+
   std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   //this is for print
 
@@ -235,7 +206,7 @@ int print_entry(fs::path p, fs::directory_options L_token, std::vector<std::vect
   if (!type_tokens.empty()) {
     for (std::string type_token : type_tokens) {
       bool token_bool = false;
-      for(char c : type_token) {
+      for (char c : type_token) {
         if (token_bool || type_match(c,p,L_token)) {
           token_bool = true;
         } else {
@@ -251,39 +222,27 @@ int print_entry(fs::path p, fs::directory_options L_token, std::vector<std::vect
   }
 
   //The Holy Mr. If Statment
-  if (name_bool && mtime_bool && type_bool)
-  {
+  if (name_bool && mtime_bool && type_bool) {
     if (!exec_args.empty()) {
-      //char **char_args = (char**) calloc(exec_args.size(), sizeof(char*)); //FREEEEEEEEEEEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       //for -exec
       std::string exec_arg;
       for (std::vector<std::string> args : exec_args) {
-        //size_t i = 0;
         for (std::string arg : args) {
-          if (arg.compare("{}") == 0) arg = p.string();
-          //char *arg_c = (char*) calloc(args[i].length(), sizeof(char)); //POSSIBLE MEMORY LEAK? CHECK IF RECRUSIVELY DELETED
-          //strcpy(arg_c, args[i].c_str());
-          //char_args[i] = arg_c;
+          size_t start = arg.find("{}");
+          if (start != std::string::npos) arg.replace(start,2,p.string());
           exec_arg += arg;
           if (arg.compare(args.back()) != 0) exec_arg += " ";
-          //i++;
-
         }
-        /*
-        std::cout << fs::absolute(p).string().c_str() << " : ";
-        std::cout << char_args[0] << " ";
-        std::cout << char_args[1] << '\n';*/
-        if (/*execv(fs::absolute(p).string().c_str(),char_args) == -1*/system(exec_arg.c_str()) == 0 && print_token) std::cout <<p.string()<< '\n';
-        //delete[] char_args;
+        if (system(exec_arg.c_str()) == 0 && print_token) std::cout << p.string()<< std::endl;
       }
-    } else std::cout << p.string() << '\n';
+    } else std::cout << p.string() << std::endl;
   }
   return 0;
 }
 
 int main(int argc, char **argv) {
 
-  //turning argv into a vector of strings because #yolo
+  //turning argv into a vector of strings
   std::vector<std::vector<std::string>> arg_list;
 
   int i = 1;
@@ -293,17 +252,18 @@ int main(int argc, char **argv) {
     i++;
   }
 
-  //TODO: std::cerr<<"find: unknown predicate `-L'"<<std::endl;
   while (i < argc) {
     //if the current argument in argv starts with a -, we include all the args for that arg after it, until the next arg that starts with a hyphen
     std::vector<std::string> arg;
     arg.push_back(std::string(argv[i]));
     if (argv[i][0] == '-') {
       i++;
-      while (i < argc && argv[i][0] != '-'){
+      while (i < argc && argv[i][0] != '-') {
         arg.push_back(std::string(argv[i]));
         i++;
       }
+      // merge any quoted sections of arg
+      finalize_tokens(arg);
     } else {
       i++;
     }
@@ -315,11 +275,10 @@ int main(int argc, char **argv) {
   std::vector<fs::path> search_paths;
   bool push_dot = true;
 
-  while (!arg_list.empty() && arg_list[0][0][0] != '-')
-  {
+  while (!arg_list.empty() && arg_list[0][0][0] != '-') {
     search_paths.push_back(arg_list[0][0]);
     if (!fs::exists(search_paths.back())) {
-      std::cerr << "find: ‘"<<search_paths.back().string()<<"’: No such file or directory" << '\n';
+      std::cerr << "find: ‘"<<search_paths.back().string()<<"’: No such file or directory" << std::endl;
       search_paths.pop_back();
       push_dot = false;
     }
@@ -335,7 +294,7 @@ int main(int argc, char **argv) {
 
   //arg_interpret each arg
   std::vector<std::vector<std::string>> exec_args;
-  while(!arg_list.empty()) {
+  while (!arg_list.empty()) {
 
     std::string cmd = arg_list[0][0];
     arg_list[0].erase(arg_list[0].begin());
@@ -366,18 +325,30 @@ int main(int argc, char **argv) {
 
   for (fs::path search_path : search_paths) {
     //find search_path
-    if(print_entry(search_path,L_token,exec_args,name_tokens,mtime_tokens,type_tokens,print_token)) return 1;
+    if (print_entry(search_path,
+                    L_token,
+                    exec_args,
+                    name_tokens,
+                    mtime_tokens,
+                    type_tokens,
+                    print_token))
+      return 1;
     //find subdirectories
     if (fs::is_directory(fs::status(search_path)) ||
-       (fs::is_symlink(fs::symlink_status(search_path)) && L_token == fs::directory_options::none)) {
-      for (auto& p : fs::recursive_directory_iterator(search_path,L_token))
-      {
+       (fs::is_symlink(fs::symlink_status(search_path)) &&
+       L_token == fs::directory_options::none)) {
+      for (auto& p : fs::recursive_directory_iterator(search_path,L_token)) {
         //print entries runs all the commands
-        if(print_entry(p.path(),L_token,exec_args,name_tokens,mtime_tokens,type_tokens,print_token)) return 1;
+        if (print_entry(p.path(),
+                        L_token,
+                        exec_args,
+                        name_tokens,
+                        mtime_tokens,
+                        type_tokens,
+                        print_token))
+          return 1;
       }
     }
-
   }
-
   return 0;
 }

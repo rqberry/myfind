@@ -204,43 +204,54 @@ bool type_match(char type_token, fs::path p, fs::directory_options L_token) {
   if (type_token == 'd') return fs::is_directory(fs::status(p)) && !fs::is_symlink(fs::symlink_status(p));// && L_token == fs::directory_options::none));
   if (type_token == 'p') return fs::is_fifo(fs::status(p));
   if (type_token == 'f') return fs::is_regular_file(fs::status(p));
-  if (type_token == 'l'
-      && L_token != fs::directory_options::follow_directory_symlink)
-      return fs::is_symlink(fs::symlink_status(p));   //need the link not the target
+  if (type_token == 'l' && L_token == fs::directory_options::none) return fs::is_symlink(fs::symlink_status(p))/* && !fs::is_directory(fs::status(p))*/;   //need the link not the target
   if (type_token == 's') return fs::is_socket(fs::status(p));
   return false;
 }
 
 
-int print_entry(fs::path p, fs::directory_options L_token, std::vector<std::vector<std::string>> exec_args, std::string name_token, double mtime_token, std::string type_token, bool print_token) {
+int print_entry(fs::path p, fs::directory_options L_token, std::vector<std::vector<std::string>> exec_args, std::vector<std::string> name_tokens, std::vector<double> mtime_tokens, std::vector<std::string> type_tokens, bool print_token) {
   std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   //this is for print
 
-  //std::string proximate_path = fs::proximate(p,start_path).string();
   //for -name
-  std::string name_token_comp = name_token;
-  if (name_token == "") name_token_comp = *(--p.end());
+  bool name_bool = true;
+  for (std::string name_token : name_tokens) {
+    if (name_token.compare(*(--p.end())) != 0) name_bool = false;
+  }
 
   //for -mtime
-  std::time_t mtime_token_comp = now;
-  if (mtime_token != -1) mtime_token_comp = std::chrono::system_clock::to_time_t(fs::last_write_time(p));
+  bool mtime_bool = true;
+  for (double mtime_token : mtime_tokens) {
+    time_t p_write = std::chrono::system_clock::to_time_t(fs::last_write_time(p));
+    if (!(p_write >= (now - (mtime_token+1)*86400) &&
+      p_write <= (now - (mtime_token)*86400))) {
+        mtime_bool = false;
+    }
+  }
 
   //for -type
-  bool type_token_comp;
-
-  if (!type_token.empty()) {
-    for(char c : type_token) {
-      type_token_comp |= type_match(c,p,L_token);
+  bool type_bool = true;
+  if (!type_tokens.empty()) {
+    for (std::string type_token : type_tokens) {
+      bool token_bool = false;
+      for(char c : type_token) {
+        if (token_bool || type_match(c,p,L_token)) {
+          token_bool = true;
+        } else {
+          token_bool = false;
+        }
+      }
+      if (type_bool && token_bool) {
+        type_bool = true;
+      } else {
+        type_bool = false;
+      }
     }
-  } else {
-     type_token_comp = true;
   }
 
   //The Holy Mr. If Statment
-  if ((*(--p.end())).compare(name_token_comp) == 0 &&
-    mtime_token_comp >= (now - (mtime_token+1)*86400) &&
-    mtime_token_comp <= (now - (mtime_token)*86400) &&
-    type_token_comp)
+  if (name_bool && mtime_bool && type_bool)
   {
     if (!exec_args.empty()) {
       //char **char_args = (char**) calloc(exec_args.size(), sizeof(char*)); //FREEEEEEEEEEEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -265,7 +276,7 @@ int print_entry(fs::path p, fs::directory_options L_token, std::vector<std::vect
         if (/*execv(fs::absolute(p).string().c_str(),char_args) == -1*/system(exec_arg.c_str()) == 0 && print_token) std::cout <<p.string()<< '\n';
         //delete[] char_args;
       }
-    } else std::cout <<p.string()<< '\n';
+    } else std::cout << p.string() << '\n';
   }
   return 0;
 }
@@ -317,9 +328,9 @@ int main(int argc, char **argv) {
 
   if (push_dot && search_paths.empty()) search_paths.push_back(".");
 
-  std::string name_token = "";
-  double mtime_token = -1;
-  std::string type_token = "";
+  std::vector<std::string> name_tokens;
+  std::vector<double> mtime_tokens;
+  std::vector<std::string> type_tokens;
   bool print_token = false;
 
   //arg_interpret each arg
@@ -330,19 +341,18 @@ int main(int argc, char **argv) {
     arg_list[0].erase(arg_list[0].begin());
 
     if (cmd.compare("-name") == 0) {
-      name_token = parse_name(arg_list[0]);
-      if (name_token.empty()) return 1;
+      name_tokens.push_back(parse_name(arg_list[0]));
+      if (name_tokens.back().empty()) return 1;
     } else if (cmd.compare("-mtime") == 0) {
-      mtime_token = parse_mtime(arg_list[0]);
-      if (mtime_token == -1) return 1;
+      mtime_tokens.push_back(parse_mtime(arg_list[0]));
+      if (mtime_tokens.back() == -1) return 1;
     } else if (cmd.compare("-type") == 0) {
-      type_token = parse_type(arg_list[0]);
-      if (type_token.empty()) return 1;
+      type_tokens.push_back(parse_type(arg_list[0]));
+      if (type_tokens.back().empty()) return 1;
     } else if (cmd.compare("-exec") == 0) {
       //this just reformats the args for -exec
       if (parse_exec(arg_list[0])) return 1;
       exec_args.push_back(arg_list[0]);
-  //    we_did_calloc = true;
     } else if (cmd.compare("-print") == 0) {
       if (parse_print(arg_list[0]) != 0) return 1;
       print_token = true;
@@ -356,14 +366,14 @@ int main(int argc, char **argv) {
 
   for (fs::path search_path : search_paths) {
     //find search_path
-    if(print_entry(search_path,L_token,exec_args,name_token,mtime_token,type_token,print_token)) return 1;
+    if(print_entry(search_path,L_token,exec_args,name_tokens,mtime_tokens,type_tokens,print_token)) return 1;
     //find subdirectories
     if (fs::is_directory(fs::status(search_path)) ||
        (fs::is_symlink(fs::symlink_status(search_path)) && L_token == fs::directory_options::none)) {
       for (auto& p : fs::recursive_directory_iterator(search_path,L_token))
       {
         //print entries runs all the commands
-        if(print_entry(p.path(),L_token,exec_args,name_token,mtime_token,type_token,print_token)) return 1;
+        if(print_entry(p.path(),L_token,exec_args,name_tokens,mtime_tokens,type_tokens,print_token)) return 1;
       }
     }
 
